@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+<head>
+<title>Feeds</title>
+</head>
+<body>
+<outline text="Shopify Engineering - Shopify Engineering" xmlUrl="https://shopify.engineering/blog.atom" htmlUrl="https://shopify.engineering" type="rss" title="Shopify Engineering - Shopify Engineering" />
+<outline title="AI" text="AI">
+<outline title="Cursor - All Updates" type="rss" htmlUrl="https://cursor.com" text="Cursor - All Updates" xmlUrl="https://cursor.com/rss.xml" />
+<outline type="rss" title="OpenAI News" htmlUrl="https://openai.com/news" text="OpenAI News" xmlUrl="https://jamesg.blog/openai.xml" />
+<outline type="rss" text="Forward Future by Matthew Berman" xmlUrl="https://rss.beehiiv.com/feeds/JX3ex86lzM.xml" title="Forward Future by Matthew Berman" htmlUrl="https://briefing.forwardfuture.ai/" />
+<outline title="Hugging Face - Blog" xmlUrl="https://huggingface.co/blog/feed.xml" type="rss" text="Hugging Face - Blog" htmlUrl="https://huggingface.co/blog" />
+</outline>
+<outline title="Daily" text="Daily">
+<outline text="AWS News Blog" htmlUrl="https://aws.amazon.com/blogs/aws/" xmlUrl="https://aws.amazon.com/blogs/aws/feed/" title="AWS News Blog" type="rss" />
+</outline>
+<outline title="Economy" text="Economy">
+<outline text="atlanticcouncil.org" type="rss" htmlUrl="https://www.atlanticcouncil.org" title="atlanticcouncil.org" xmlUrl="https://www.atlanticcouncil.org/wp-json/wp/v2/pages/442023" />
+</outline>
+<outline title="Engineering" text="Engineering">
+<outline title="Julia Evans" text="Julia Evans" htmlUrl="https://jvns.ca/atom.xml" type="rss" xmlUrl="https://jvns.ca/atom.xml" />
+<outline xmlUrl="https://blog.cloudflare.com/rss/" type="rss" title="The Cloudflare Blog" htmlUrl="https://blog.cloudflare.com" text="The Cloudflare Blog" />
+<outline xmlUrl="https://engineering.fb.com/feed/" htmlUrl="https://engineering.fb.com/" type="rss" text="Engineering at Meta" title="Engineering at Meta" />
+<outline htmlUrl="https://fly.io/blog/" type="rss" xmlUrl="https://fly.io/blog/feed.xml" text="The Fly Blog" title="The Fly Blog" />
+<outline text="LinkedIn Engineering" htmlUrl="https://engineering.linkedin.com/blog.rss.html" xmlUrl="https://engineering.linkedin.com/blog.rss.html" type="rss" title="LinkedIn Engineering" />
+<outline htmlUrl="https://feeds.transistor.fm/postgres-fm" title="Postgres FM" xmlUrl="https://feeds.transistor.fm/postgres-fm" text="Postgres FM" type="rss" />
+<outline xmlUrl="https://www.joelonsoftware.com/feed/" title="Joel on Software" text="Joel on Software" htmlUrl="https://www.joelonsoftware.com" type="rss" />
+<outline title="The Keyword" xmlUrl="https://blog.google/rss" type="rss" text="The Keyword" htmlUrl="https://blog.google/" />
+</outline>
+<outline text="HN" title="HN">
+<outline type="rss" htmlUrl="https://news.ycombinator.com/newest" text="Hacker News: Newest" title="Hacker News: Newest" xmlUrl="https://hnrss.org/newest?points=100" />
+<outline htmlUrl="https://news.ycombinator.com/best" title="Hacker News: Best" xmlUrl="https://hnrss.org/best" text="Hacker News: Best" type="rss" />
+<outline htmlUrl="https://news.ycombinator.com/newest" xmlUrl="https://hnrss.org/newest?q=Math" type="rss" text="Hacker News - Newest: &quot;Math&quot;" title="Hacker News - Newest: &quot;Math&quot;" />
+</outline>
+<outline title="HN-AI" text="HN-AI">
+<outline type="rss" xmlUrl="https://hnrss.org/newest?q=ChatGPT+OR+LLM+OR+AI+OR+Machine-Learning+OR+OpenAI+OR+huggingface+OR+Neural-Networks&amp;points=20" title="Hacker News - Newest: &quot;&quot;ChatGPT&quot; &quot;LLM&quot; &quot;AI&quot; &quot;Machine-Learning&quot; &quot;OpenAI&quot; &quot;huggingface&quot; &quot;Neural-Networks&quot;&quot;" text="Hacker News - Newest: &quot;&quot;ChatGPT&quot; &quot;LLM&quot; &quot;AI&quot; &quot;Machine-Learning&quot; &quot;OpenAI&quot; &quot;huggingface&quot; &quot;Neural-Networks&quot;&quot;" htmlUrl="https://news.ycombinator.com/newest" />
+<outline text="Hacker News - Newest: &quot;Claude&quot;" title="Hacker News - Newest: &quot;Claude&quot;" htmlUrl="https://news.ycombinator.com/newest" xmlUrl="https://hnrss.org/newest?q=Claude&amp;points=20" type="rss" />
+<outline htmlUrl="https://news.ycombinator.com/newest" type="rss" title="Hacker News - Newest: &quot;Gemini&quot;" text="Hacker News - Newest: &quot;Gemini&quot;" xmlUrl="https://hnrss.org/newest?q=Gemini&amp;points=20" />
+<outline type="rss" xmlUrl="https://hnrss.org/newest?q=OpenAI&amp;points=20" title="Hacker News - Newest: &quot;OpenAI&quot;" text="Hacker News - Newest: &quot;OpenAI&quot;" htmlUrl="https://news.ycombinator.com/newest" />
+</outline>
+<outline text="Jobs" title="Jobs">
+<outline htmlUrl="https://news.ycombinator.com/jobs" xmlUrl="https://hnrss.org/jobs" text="Hacker News: Jobs" title="Hacker News: Jobs" type="rss" />
+</outline>
+<outline text="Misc" title="Misc">
+<outline type="rss" xmlUrl="http://rss.slashdot.org/Slashdot/slashdotMain" text="Slashdot" htmlUrl="https://slashdot.org/" title="Slashdot" />
+<outline title="Rust Blog" type="rss" text="Rust Blog" htmlUrl="https://blog.rust-lang.org/" xmlUrl="https://blog.rust-lang.org/feed.xml" />
+<outline type="rss" text="DevOps &amp; SRE" xmlUrl="https://cloudblog.withgoogle.com/products/devops-sre/rss/" title="DevOps &amp; SRE" htmlUrl="https://cloud.google.com/blog/products/devops-sre/" />
+<outline htmlUrl="https://kubernetes.io/" xmlUrl="https://kubernetes.io/feed.xml" title="The Kubernetes project logo" text="The Kubernetes project logo" type="rss" />
+<outline text="Golang Weekly" type="rss" xmlUrl="https://cprss.s3.amazonaws.com/golangweekly.com.xml" htmlUrl="https://golangweekly.com/" title="Golang Weekly" />
+</outline>
+<outline title="News" text="News">
+<outline text="The Local Germany" type="rss" xmlUrl="https://feeds.thelocal.com/rss/de?_gl=1*1khbqft*_ga*ODI1NzU2MjQ5LjE2NTQ3MTU5NTY.*_gid*NzY3NDI2MTM3LjE2NTQ3MTU5NTY." htmlUrl="https://feeds.thelocal.com/" title="The Local Germany" />
+<outline title="Aktuelle Bevölkerungsschutz-Warnungen (Berlin)" text="Aktuelle Bevölkerungsschutz-Warnungen (Berlin)" htmlUrl="https://warnung.bund.de" xmlUrl="https://warnung.bund.de/api31/mowas/rss/110000000000.rss" type="rss" />
+</outline>
+<outline title="Security" text="Security">
+<outline type="rss" title="Security Archives - Security Affairs" text="Security Archives - Security Affairs" htmlUrl="https://securityaffairs.com/category/security" xmlUrl="https://securityaffairs.co/wordpress/category/security/feed" />
+<outline htmlUrl="https://nakedsecurity.sophos.com" title="Naked Security" type="rss" text="Naked Security" xmlUrl="http://nakedsecurity.sophos.com/feed/" />
+<outline xmlUrl="http://feeds.feedburner.com/GoogleOnlineSecurityBlog" type="rss" title="Google Online Security Blog" text="Google Online Security Blog" htmlUrl="http://security.googleblog.com/" />
+<outline title="Security Archives - TechRepublic" type="rss" xmlUrl="http://www.techrepublic.com/rssfeeds/topic/security/?feedType=rssfeeds" text="Security Archives - TechRepublic" htmlUrl="https://www.techrepublic.com/topic/security/" />
+<outline htmlUrl="https://www.schneier.com/" xmlUrl="https://www.schneier.com/feed/atom/rss" text="Schneier on Security" title="Schneier on Security" type="rss" />
+<outline htmlUrl="https://cloud.google.com/blog/topics/threat-intelligence/" title="Threat Intelligence" text="Threat Intelligence" xmlUrl="https://cloudblog.withgoogle.com/topics/threat-intelligence/rss/" type="rss" />
+<outline title="Hacker News - Newest: &quot;Vulnerability&quot;" htmlUrl="https://news.ycombinator.com/newest" type="rss" text="Hacker News - Newest: &quot;Vulnerability&quot;" xmlUrl="https://hnrss.org/newest?q=Vulnerability" />
+<outline title="Hacker News - Newest: &quot;security&quot;" type="rss" xmlUrl="https://hnrss.org/newest?q=security" htmlUrl="https://news.ycombinator.com/newest" text="Hacker News - Newest: &quot;security&quot;" />
+</outline>
+</body>
+</opml>

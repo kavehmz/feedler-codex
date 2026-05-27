@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Feedler</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">F</div>
+          <div>
+            <h1>Feedler</h1>
+            <p id="feedSummary">Loading feeds</p>
+          </div>
+        </div>
+
+        <div class="sidebar-actions">
+          <button class="button primary" id="refreshButton" type="button">Refresh</button>
+          <label class="button secondary import-button">
+            Import OPML
+            <input id="opmlInput" type="file" accept=".opml,.xml" />
+          </label>
+        </div>
+
+        <div class="refresh-status" id="refreshStatus">Idle</div>
+
+        <section class="nav-section">
+          <div class="section-label">Categories</div>
+          <button class="nav-row active" id="allCategoriesButton" type="button">
+            <span>All</span>
+            <span id="allUnreadCount">0</span>
+          </button>
+          <div id="categoryList"></div>
+        </section>
+
+        <section class="nav-section feeds">
+          <div class="section-label">Feeds</div>
+          <div id="feedList"></div>
+        </section>
+      </aside>
+
+      <main class="workspace">
+        <section class="list-pane">
+          <header class="list-toolbar">
+            <div class="search-wrap">
+              <span aria-hidden="true">Search</span>
+              <input id="searchInput" type="search" placeholder="Title, summary, source" />
+            </div>
+            <div class="toolbar-row">
+              <div class="segmented" aria-label="Read filter">
+                <button class="active" data-status="unread" type="button">Unread</button>
+                <button data-status="all" type="button">All</button>
+                <button data-status="read" type="button">Read</button>
+              </div>
+              <select id="rangeSelect" aria-label="Date range">
+                <option value="all">All time</option>
+                <option value="today">Today</option>
+                <option value="week">Week</option>
+              </select>
+            </div>
+            <div class="toolbar-row">
+              <button class="button secondary" id="markVisibleReadButton" type="button">Mark visible read</button>
+              <button class="button secondary" id="exportButton" type="button">Export Markdown</button>
+            </div>
+          </header>
+
+          <div class="result-line" id="resultLine">No items loaded</div>
+          <div class="item-list" id="itemList"></div>
+        </section>
+
+        <article class="reader-pane" id="readerPane">
+          <div class="empty-reader">
+            <h2>Select a story</h2>
+            <p>Open an item from the list to read it, mark it, or jump to the original source.</p>
+          </div>
+        </article>
+      </main>
+    </div>
+
+    <div class="modal-backdrop hidden" id="exportModal" role="dialog" aria-modal="true" aria-labelledby="exportTitle">
+      <div class="modal">
+        <header class="modal-header">
+          <h2 id="exportTitle">Markdown export</h2>
+          <button class="icon-button" id="closeExportButton" type="button" aria-label="Close">×</button>
+        </header>
+        <div class="export-controls">
+          <select id="exportPeriod" aria-label="Export period">
+            <option value="today">Today Reads</option>
+            <option value="week">This Week Reads</option>
+            <option value="unread">Unread Reads</option>
+          </select>
+          <select id="exportStatus" aria-label="Export read status">
+            <option value="all">All items</option>
+            <option value="unread">Unread only</option>
+            <option value="read">Read only</option>
+          </select>
+        </div>
+        <textarea id="exportText" spellcheck="false"></textarea>
+        <footer class="modal-actions">
+          <button class="button secondary" id="copyExportButton" type="button">Copy</button>
+          <button class="button primary" id="downloadExportButton" type="button">Download</button>
+        </footer>
+      </div>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
