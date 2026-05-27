@@ -1,3 +1,10 @@
+const defaultSettings = {
+  markReadOnScroll: false,
+  density: "comfortable",
+  defaultStatus: "unread",
+  defaultRange: "all",
+};
+
 const state = {
   feeds: [],
   items: [],
@@ -8,11 +15,19 @@ const state = {
   range: "all",
   search: "",
   refreshTimer: null,
+  scrollReadTimer: null,
+  settings: loadSettings(),
 };
+
+state.status = state.settings.defaultStatus;
+state.range = state.settings.defaultRange;
 
 const els = {
   feedSummary: document.querySelector("#feedSummary"),
   refreshButton: document.querySelector("#refreshButton"),
+  manageFeedsButton: document.querySelector("#manageFeedsButton"),
+  settingsButton: document.querySelector("#settingsButton"),
+  shortcutsButton: document.querySelector("#shortcutsButton"),
   refreshStatus: document.querySelector("#refreshStatus"),
   opmlInput: document.querySelector("#opmlInput"),
   allCategoriesButton: document.querySelector("#allCategoriesButton"),
@@ -24,15 +39,31 @@ const els = {
   resultLine: document.querySelector("#resultLine"),
   itemList: document.querySelector("#itemList"),
   readerPane: document.querySelector("#readerPane"),
-  markVisibleReadButton: document.querySelector("#markVisibleReadButton"),
+  markSelectionReadButton: document.querySelector("#markSelectionReadButton"),
   exportButton: document.querySelector("#exportButton"),
   exportModal: document.querySelector("#exportModal"),
   closeExportButton: document.querySelector("#closeExportButton"),
+  exportScope: document.querySelector("#exportScope"),
   exportPeriod: document.querySelector("#exportPeriod"),
   exportStatus: document.querySelector("#exportStatus"),
   exportText: document.querySelector("#exportText"),
   copyExportButton: document.querySelector("#copyExportButton"),
   downloadExportButton: document.querySelector("#downloadExportButton"),
+  manageModal: document.querySelector("#manageModal"),
+  closeManageButton: document.querySelector("#closeManageButton"),
+  addFeedForm: document.querySelector("#addFeedForm"),
+  newFeedURL: document.querySelector("#newFeedURL"),
+  newFeedTitle: document.querySelector("#newFeedTitle"),
+  newFeedCategory: document.querySelector("#newFeedCategory"),
+  feedManagerList: document.querySelector("#feedManagerList"),
+  settingsModal: document.querySelector("#settingsModal"),
+  closeSettingsButton: document.querySelector("#closeSettingsButton"),
+  scrollReadSetting: document.querySelector("#scrollReadSetting"),
+  densitySetting: document.querySelector("#densitySetting"),
+  defaultStatusSetting: document.querySelector("#defaultStatusSetting"),
+  defaultRangeSetting: document.querySelector("#defaultRangeSetting"),
+  shortcutsModal: document.querySelector("#shortcutsModal"),
+  closeShortcutsButton: document.querySelector("#closeShortcutsButton"),
 };
 
 async function api(path, options = {}) {
@@ -59,6 +90,7 @@ async function loadFeeds() {
   const payload = await api("/api/feeds");
   state.feeds = payload.feeds || [];
   renderFeeds();
+  renderFeedManager();
 }
 
 async function loadItems() {
@@ -66,8 +98,8 @@ async function loadItems() {
   params.set("status", state.status);
   params.set("range", state.range);
   params.set("limit", "120");
-  if (state.feedId) params.set("feed_id", String(state.feedId));
-  if (state.category !== "all") params.set("category", state.category);
+  params.set("timezone", userTimezone());
+  applyScopeToParams(params);
   if (state.search) params.set("q", state.search);
 
   const payload = await api(`/api/items?${params}`);
@@ -106,12 +138,7 @@ function renderFeeds() {
       button.innerHTML = `<span></span><span></span>`;
       button.children[0].textContent = category;
       button.children[1].textContent = counts.unread;
-      button.addEventListener("click", () => {
-        state.category = category;
-        state.feedId = null;
-        loadItems();
-        renderFeeds();
-      });
+      button.addEventListener("click", () => selectScope({ category, feedId: null }));
       return button;
     }),
   );
@@ -122,16 +149,12 @@ function renderFeeds() {
       button.className = "feed-row";
       button.type = "button";
       button.classList.toggle("active", state.feedId === feed.id);
+      button.classList.toggle("error", Boolean(feed.last_error));
       button.title = feed.last_error ? `${feed.title}\n${feed.last_error}` : feed.title;
       button.innerHTML = `<span></span><span></span>`;
-      button.children[0].textContent = feed.title;
+      button.children[0].textContent = `${feed.last_error ? "! " : ""}${feed.title}`;
       button.children[1].textContent = feed.unread_count;
-      button.addEventListener("click", () => {
-        state.feedId = feed.id;
-        state.category = "all";
-        loadItems();
-        renderFeeds();
-      });
+      button.addEventListener("click", () => selectScope({ category: "all", feedId: feed.id }));
       return button;
     }),
   );
@@ -142,7 +165,7 @@ function renderFeeds() {
 }
 
 function renderItems() {
-  els.resultLine.textContent = `${state.items.length} item${state.items.length === 1 ? "" : "s"}`;
+  els.resultLine.textContent = `${state.items.length} item${state.items.length === 1 ? "" : "s"} in ${scopeLabel()}`;
   if (state.items.length === 0) {
     const empty = document.createElement("div");
     empty.className = "item-row read";
@@ -156,6 +179,7 @@ function renderItems() {
       const button = document.createElement("button");
       button.className = "item-row";
       button.type = "button";
+      button.dataset.itemId = String(item.id);
       button.classList.toggle("read", item.read);
       button.classList.toggle("active", state.selectedItem?.id === item.id);
       button.innerHTML = `
@@ -175,28 +199,36 @@ function renderItems() {
   );
 }
 
-async function selectItem(id) {
-  let item = state.items.find((candidate) => candidate.id === id);
-  if (!item) {
-    const payload = await api(`/api/items/${id}`);
-    item = payload.item;
-  }
-
-  state.selectedItem = item;
-  renderReader(item);
-  updateURLItem(item.id);
-
-  if (!item.read) {
-    const payload = await api(`/api/items/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ read: true }),
-    });
-    state.selectedItem = payload.item;
-    state.items = state.items.map((candidate) => (candidate.id === id ? payload.item : candidate));
-    renderReader(payload.item);
-    renderItems();
-    await loadFeeds();
-  }
+function renderFeedManager() {
+  if (!els.feedManagerList) return;
+  els.feedManagerList.replaceChildren(
+    ...state.feeds.map((feed) => {
+      const row = document.createElement("div");
+      row.className = "feed-manage-row";
+      row.dataset.feedId = String(feed.id);
+      row.innerHTML = `
+        <div class="feed-manage-main">
+          <input class="manage-title" type="text" />
+          <input class="manage-category" type="text" />
+          <div class="feed-url"></div>
+          <div class="feed-error"></div>
+        </div>
+        <div class="feed-manage-actions">
+          <button class="button secondary save-feed" type="button">Save</button>
+          <button class="button secondary retry-feed" type="button">Retry</button>
+          <button class="button danger delete-feed" type="button">Delete</button>
+        </div>
+      `;
+      row.querySelector(".manage-title").value = feed.title;
+      row.querySelector(".manage-category").value = feed.category;
+      row.querySelector(".feed-url").textContent = feed.feed_url;
+      row.querySelector(".feed-error").textContent = feed.last_error ? `Error: ${feed.last_error}` : "";
+      row.querySelector(".save-feed").addEventListener("click", () => saveManagedFeed(feed.id, row));
+      row.querySelector(".retry-feed").addEventListener("click", () => retryFeed(feed.id));
+      row.querySelector(".delete-feed").addEventListener("click", () => deleteFeed(feed.id, feed.title));
+      return row;
+    }),
+  );
 }
 
 function renderReader(item) {
@@ -232,19 +264,51 @@ function renderReader(item) {
 
   const toggle = els.readerPane.querySelector("#toggleReadButton");
   toggle.textContent = item.read ? "Mark unread" : "Mark read";
-  toggle.addEventListener("click", async () => {
-    const payload = await api(`/api/items/${item.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ read: !item.read }),
-    });
-    state.selectedItem = payload.item;
-    state.items = state.items.map((candidate) => (candidate.id === item.id ? payload.item : candidate));
-    renderReader(payload.item);
-    renderItems();
-    await loadFeeds();
-  });
+  toggle.addEventListener("click", () => toggleSelectedRead());
 
   els.readerPane.querySelector(".article-body").textContent = item.content || item.summary || "No article text was provided by this feed.";
+}
+
+function selectScope({ category, feedId }) {
+  state.category = category;
+  state.feedId = feedId;
+  loadItems();
+  renderFeeds();
+}
+
+async function selectItem(id) {
+  let item = state.items.find((candidate) => candidate.id === id);
+  if (!item) {
+    const payload = await api(`/api/items/${id}`);
+    item = payload.item;
+  }
+
+  state.selectedItem = item;
+  renderReader(item);
+  updateURLItem(item.id);
+
+  if (!item.read) {
+    await setItemRead(item.id, true);
+  } else {
+    renderItems();
+  }
+}
+
+async function setItemRead(id, read) {
+  const payload = await api(`/api/items/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ read }),
+  });
+  state.selectedItem = payload.item;
+  state.items = state.items.map((candidate) => (candidate.id === id ? payload.item : candidate));
+  renderReader(payload.item);
+  renderItems();
+  await loadFeeds();
+}
+
+async function toggleSelectedRead() {
+  if (!state.selectedItem) return;
+  await setItemRead(state.selectedItem.id, !state.selectedItem.read);
 }
 
 async function refreshFeeds() {
@@ -295,8 +359,85 @@ async function importOPML(file) {
   await loadFeeds();
 }
 
+async function addFeed(event) {
+  event.preventDefault();
+  const payload = await api("/api/feeds", {
+    method: "POST",
+    body: JSON.stringify({
+      feed_url: els.newFeedURL.value.trim(),
+      title: els.newFeedTitle.value.trim(),
+      category: els.newFeedCategory.value.trim() || "Uncategorized",
+    }),
+  });
+  els.addFeedForm.reset();
+  await loadFeeds();
+  await retryFeed(payload.feed.id);
+}
+
+async function saveManagedFeed(id, row) {
+  await api(`/api/feeds/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      title: row.querySelector(".manage-title").value.trim(),
+      category: row.querySelector(".manage-category").value.trim(),
+    }),
+  });
+  await loadFeeds();
+  await loadItems();
+}
+
+async function retryFeed(id) {
+  els.refreshStatus.textContent = "Retrying feed";
+  try {
+    await api(`/api/feeds/${id}/refresh`, { method: "POST", body: JSON.stringify({}) });
+  } catch (error) {
+    els.refreshStatus.textContent = error.message;
+  }
+  await loadFeeds();
+  await loadItems();
+}
+
+async function deleteFeed(id, title) {
+  if (!window.confirm(`Delete "${title}" and all saved items from it?`)) return;
+  await api(`/api/feeds/${id}`, { method: "DELETE" });
+  if (state.feedId === id) {
+    state.feedId = null;
+    state.category = "all";
+  }
+  await loadFeeds();
+  await loadItems();
+}
+
+async function markSelectionRead() {
+  const body = scopedBody({ read: true, status: "unread" });
+  const payload = await api("/api/read", { method: "POST", body: JSON.stringify(body) });
+  els.refreshStatus.textContent = `Marked ${payload.updated || 0} item${payload.updated === 1 ? "" : "s"} read`;
+  await loadFeeds();
+  await loadItems();
+}
+
+async function markScrolledItemsRead() {
+  if (!state.settings.markReadOnScroll || state.items.length === 0) return;
+  const listRect = els.itemList.getBoundingClientRect();
+  const ids = [];
+  for (const row of els.itemList.querySelectorAll(".item-row[data-item-id]")) {
+    const id = Number(row.dataset.itemId);
+    const item = state.items.find((candidate) => candidate.id === id);
+    if (!item || item.read) continue;
+    if (row.getBoundingClientRect().bottom < listRect.top) {
+      ids.push(id);
+      row.classList.add("read");
+    }
+  }
+  if (ids.length === 0) return;
+  state.items = state.items.map((item) => (ids.includes(item.id) ? { ...item, read: true, read_at: new Date().toISOString() } : item));
+  await api("/api/read", { method: "POST", body: JSON.stringify({ ids, read: true }) });
+  await loadFeeds();
+}
+
 async function openExport() {
   els.exportModal.classList.remove("hidden");
+  els.exportScope.textContent = `Export scope: ${scopeLabel()}`;
   await refreshExportText();
 }
 
@@ -304,6 +445,8 @@ async function refreshExportText() {
   const params = new URLSearchParams();
   params.set("period", els.exportPeriod.value);
   params.set("status", els.exportStatus.value);
+  params.set("timezone", userTimezone());
+  applyScopeToParams(params);
   const text = await api(`/api/export?${params}`);
   els.exportText.value = text;
 }
@@ -315,6 +458,68 @@ function downloadExport() {
   link.download = `feedler-${els.exportPeriod.value}.md`;
   link.click();
   URL.revokeObjectURL(link.href);
+}
+
+function applyScopeToParams(params) {
+  if (state.feedId) {
+    params.set("feed_id", String(state.feedId));
+  } else if (state.category !== "all") {
+    params.set("category", state.category);
+  }
+}
+
+function scopedBody(extra = {}) {
+  const body = { ...extra, timezone: userTimezone() };
+  if (state.feedId) {
+    body.feed_id = state.feedId;
+  } else if (state.category !== "all") {
+    body.category = state.category;
+  }
+  return body;
+}
+
+function scopeLabel() {
+  if (state.feedId) {
+    return state.feeds.find((feed) => feed.id === state.feedId)?.title || "selected feed";
+  }
+  if (state.category !== "all") {
+    return state.category;
+  }
+  return "all feeds";
+}
+
+function loadSettings() {
+  try {
+    return { ...defaultSettings, ...JSON.parse(localStorage.getItem("feedler.settings") || "{}") };
+  } catch (_) {
+    return { ...defaultSettings };
+  }
+}
+
+function saveSettings() {
+  localStorage.setItem("feedler.settings", JSON.stringify(state.settings));
+}
+
+function syncSettingsUI() {
+  document.body.classList.toggle("density-compact", state.settings.density === "compact");
+  els.scrollReadSetting.checked = state.settings.markReadOnScroll;
+  els.densitySetting.value = state.settings.density;
+  els.defaultStatusSetting.value = state.settings.defaultStatus;
+  els.defaultRangeSetting.value = state.settings.defaultRange;
+  els.rangeSelect.value = state.range;
+  document.querySelectorAll(".segmented button").forEach((button) => {
+    button.classList.toggle("active", button.dataset.status === state.status);
+  });
+}
+
+function updateSetting(key, value) {
+  state.settings[key] = value;
+  saveSettings();
+  syncSettingsUI();
+}
+
+function userTimezone() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || "";
 }
 
 function formatDate(value) {
@@ -335,6 +540,25 @@ function updateURLItem(id) {
   window.history.replaceState({}, "", url);
 }
 
+function openModal(modal) {
+  modal.classList.remove("hidden");
+}
+
+function closeModal(modal) {
+  modal.classList.add("hidden");
+}
+
+function closeAllModals() {
+  [els.exportModal, els.manageModal, els.settingsModal, els.shortcutsModal].forEach(closeModal);
+}
+
+function selectAdjacent(delta) {
+  if (state.items.length === 0) return;
+  const currentIndex = state.selectedItem ? state.items.findIndex((item) => item.id === state.selectedItem.id) : -1;
+  const nextIndex = Math.min(Math.max(currentIndex + delta, 0), state.items.length - 1);
+  selectItem(state.items[nextIndex].id);
+}
+
 function debounce(fn, delay) {
   let timer = null;
   return (...args) => {
@@ -345,12 +569,10 @@ function debounce(fn, delay) {
 
 function bindEvents() {
   els.refreshButton.addEventListener("click", refreshFeeds);
-  els.allCategoriesButton.addEventListener("click", () => {
-    state.category = "all";
-    state.feedId = null;
-    loadItems();
-    renderFeeds();
-  });
+  els.manageFeedsButton.addEventListener("click", () => openModal(els.manageModal));
+  els.settingsButton.addEventListener("click", () => openModal(els.settingsModal));
+  els.shortcutsButton.addEventListener("click", () => openModal(els.shortcutsModal));
+  els.allCategoriesButton.addEventListener("click", () => selectScope({ category: "all", feedId: null }));
   els.searchInput.addEventListener(
     "input",
     debounce(() => {
@@ -364,37 +586,92 @@ function bindEvents() {
   });
   document.querySelectorAll(".segmented button").forEach((button) => {
     button.addEventListener("click", () => {
-      document.querySelectorAll(".segmented button").forEach((candidate) => candidate.classList.remove("active"));
-      button.classList.add("active");
       state.status = button.dataset.status;
+      syncSettingsUI();
       loadItems();
     });
   });
-  els.markVisibleReadButton.addEventListener("click", async () => {
-    const ids = state.items.filter((item) => !item.read).map((item) => item.id);
-    if (ids.length === 0) return;
-    await api("/api/read", { method: "POST", body: JSON.stringify({ ids, read: true }) });
-    await loadFeeds();
-    await loadItems();
-  });
+  els.markSelectionReadButton.addEventListener("click", markSelectionRead);
   els.opmlInput.addEventListener("change", () => {
     const [file] = els.opmlInput.files;
     if (file) importOPML(file);
     els.opmlInput.value = "";
   });
   els.exportButton.addEventListener("click", openExport);
-  els.closeExportButton.addEventListener("click", () => els.exportModal.classList.add("hidden"));
+  els.closeExportButton.addEventListener("click", () => closeModal(els.exportModal));
   els.exportPeriod.addEventListener("change", refreshExportText);
   els.exportStatus.addEventListener("change", refreshExportText);
   els.copyExportButton.addEventListener("click", () => navigator.clipboard.writeText(els.exportText.value));
   els.downloadExportButton.addEventListener("click", downloadExport);
-  els.exportModal.addEventListener("click", (event) => {
-    if (event.target === els.exportModal) els.exportModal.classList.add("hidden");
+  els.addFeedForm.addEventListener("submit", addFeed);
+  els.closeManageButton.addEventListener("click", () => closeModal(els.manageModal));
+  els.closeSettingsButton.addEventListener("click", () => closeModal(els.settingsModal));
+  els.closeShortcutsButton.addEventListener("click", () => closeModal(els.shortcutsModal));
+  els.scrollReadSetting.addEventListener("change", () => updateSetting("markReadOnScroll", els.scrollReadSetting.checked));
+  els.densitySetting.addEventListener("change", () => updateSetting("density", els.densitySetting.value));
+  els.defaultStatusSetting.addEventListener("change", () => updateSetting("defaultStatus", els.defaultStatusSetting.value));
+  els.defaultRangeSetting.addEventListener("change", () => updateSetting("defaultRange", els.defaultRangeSetting.value));
+  els.itemList.addEventListener("scroll", () => {
+    window.clearTimeout(state.scrollReadTimer);
+    state.scrollReadTimer = window.setTimeout(markScrolledItemsRead, 120);
   });
+  [els.exportModal, els.manageModal, els.settingsModal, els.shortcutsModal].forEach((modal) => {
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) closeModal(modal);
+    });
+  });
+  document.addEventListener("keydown", handleShortcuts);
+}
+
+function handleShortcuts(event) {
+  const target = event.target;
+  const isTextInput = ["INPUT", "TEXTAREA", "SELECT"].includes(target?.tagName);
+  if (event.key === "Escape") {
+    closeAllModals();
+    if (target === els.searchInput) target.blur();
+    return;
+  }
+  if (isTextInput) return;
+
+  switch (event.key) {
+    case "?":
+      event.preventDefault();
+      openModal(els.shortcutsModal);
+      break;
+    case "/":
+      event.preventDefault();
+      els.searchInput.focus();
+      break;
+    case "j":
+      event.preventDefault();
+      selectAdjacent(1);
+      break;
+    case "k":
+      event.preventDefault();
+      selectAdjacent(-1);
+      break;
+    case "r":
+      event.preventDefault();
+      refreshFeeds();
+      break;
+    case "e":
+      event.preventDefault();
+      openExport();
+      break;
+    case "a":
+      event.preventDefault();
+      markSelectionRead();
+      break;
+    case "m":
+      event.preventDefault();
+      toggleSelectedRead();
+      break;
+  }
 }
 
 async function boot() {
   bindEvents();
+  syncSettingsUI();
   await loadFeeds();
   await loadItems();
   await pollRefresh();

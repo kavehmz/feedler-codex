@@ -67,6 +67,29 @@ func (r *Refresher) Status() RefreshStatus {
 	return status
 }
 
+func (r *Refresher) RefreshFeed(ctx context.Context, feedID int64) (Feed, int, error) {
+	feed, err := r.store.GetFeed(ctx, feedID)
+	if err != nil {
+		return Feed{}, 0, err
+	}
+
+	count, err := r.refreshFeed(feed)
+	if err != nil {
+		_ = r.store.UpdateFeedAfterRefresh(ctx, feed.ID, "", "", err.Error())
+		refreshed, getErr := r.store.GetFeed(ctx, feedID)
+		if getErr != nil {
+			return feed, count, err
+		}
+		return refreshed, count, err
+	}
+
+	refreshed, err := r.store.GetFeed(ctx, feedID)
+	if err != nil {
+		return feed, count, err
+	}
+	return refreshed, count, nil
+}
+
 func (r *Refresher) run() {
 	ctx := context.Background()
 	feeds, err := r.store.ListFeeds(ctx)

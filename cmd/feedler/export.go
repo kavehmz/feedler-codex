@@ -6,11 +6,11 @@ import (
 	"time"
 )
 
-func BuildMarkdownExport(period string, status string, baseURL string, items []Item) string {
+func BuildMarkdownExport(period string, status string, timezone string, baseURL string, items []Item) string {
 	var b strings.Builder
 	title := exportTitle(period, status)
 	fmt.Fprintf(&b, "# %s\n\n", title)
-	fmt.Fprintf(&b, "Generated: %s\n", time.Now().Format(time.RFC1123))
+	fmt.Fprintf(&b, "Generated: %s\n", exportTime(timezone).Format(time.RFC1123))
 	fmt.Fprintf(&b, "Items: %d\n\n", len(items))
 
 	if len(items) == 0 {
@@ -42,6 +42,17 @@ func BuildMarkdownExport(period string, status string, baseURL string, items []I
 	}
 
 	return b.String()
+}
+
+func exportTime(timezone string) time.Time {
+	if timezone == "" {
+		return time.Now()
+	}
+	loc, err := time.LoadLocation(timezone)
+	if err != nil {
+		return time.Now()
+	}
+	return time.Now().In(loc)
 }
 
 func exportTitle(period string, status string) string {

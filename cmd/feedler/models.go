@@ -34,6 +34,7 @@ type ItemQuery struct {
 	Status   string
 	Range    string
 	Search   string
+	Timezone string
 	Limit    int
 	Offset   int
 }

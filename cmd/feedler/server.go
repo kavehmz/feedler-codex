@@ -24,6 +24,7 @@ func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/health", s.handleHealth)
 	mux.HandleFunc("/api/feeds", s.handleFeeds)
+	mux.HandleFunc("/api/feeds/", s.handleFeed)
 	mux.HandleFunc("/api/items", s.handleItems)
 	mux.HandleFunc("/api/items/", s.handleItem)
 	mux.HandleFunc("/api/read", s.handleBulkRead)
@@ -43,16 +44,109 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleFeeds(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
+	switch r.Method {
+	case http.MethodGet:
+		feeds, err := s.store.ListFeeds(r.Context())
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"feeds": feeds})
+	case http.MethodPost:
+		var request struct {
+			Title    string `json:"title"`
+			FeedURL  string `json:"feed_url"`
+			Category string `json:"category"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			writeError(w, http.StatusBadRequest, errors.New("invalid json body"))
+			return
+		}
+		feed, err := s.store.CreateFeed(r.Context(), Feed{
+			Title:    request.Title,
+			FeedURL:  request.FeedURL,
+			Category: request.Category,
+		})
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err)
+			return
+		}
+		writeJSON(w, http.StatusCreated, map[string]any{"feed": feed})
+	default:
 		methodNotAllowed(w)
 		return
 	}
-	feeds, err := s.store.ListFeeds(r.Context())
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
+}
+
+func (s *Server) handleFeed(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/feeds/"), "/"), "/")
+	if len(parts) == 0 || parts[0] == "" {
+		http.NotFound(w, r)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"feeds": feeds})
+	id, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, errors.New("invalid feed id"))
+		return
+	}
+
+	if len(parts) == 2 && parts[1] == "refresh" {
+		if r.Method != http.MethodPost {
+			methodNotAllowed(w)
+			return
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), 35*time.Second)
+		defer cancel()
+		feed, count, err := s.refresher.RefreshFeed(ctx, id)
+		if err != nil {
+			status := http.StatusBadGateway
+			if errors.Is(err, sql.ErrNoRows) {
+				status = http.StatusNotFound
+			}
+			writeJSON(w, status, map[string]any{"feed": feed, "items": count, "error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"feed": feed, "items": count})
+		return
+	}
+	if len(parts) != 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodPatch:
+		var request struct {
+			Title    string `json:"title"`
+			Category string `json:"category"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			writeError(w, http.StatusBadRequest, errors.New("invalid json body"))
+			return
+		}
+		feed, err := s.store.UpdateFeed(r.Context(), id, request.Title, request.Category)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				writeError(w, http.StatusNotFound, errors.New("feed not found"))
+				return
+			}
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"feed": feed})
+	case http.MethodDelete:
+		if err := s.store.DeleteFeed(r.Context(), id); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				writeError(w, http.StatusNotFound, errors.New("feed not found"))
+				return
+			}
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"deleted": id})
+	default:
+		methodNotAllowed(w)
+	}
 }
 
 func (s *Server) handleItems(w http.ResponseWriter, r *http.Request) {
@@ -130,14 +224,37 @@ func (s *Server) handleBulkRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var request struct {
-		IDs  []int64 `json:"ids"`
-		Read bool    `json:"read"`
+		IDs      []int64 `json:"ids"`
+		Read     bool    `json:"read"`
+		FeedID   int64   `json:"feed_id"`
+		Category string  `json:"category"`
+		Status   string  `json:"status"`
+		Range    string  `json:"range"`
+		Search   string  `json:"q"`
+		Timezone string  `json:"timezone"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		writeError(w, http.StatusBadRequest, errors.New("invalid json body"))
 		return
 	}
-	affected, err := s.store.SetItemsRead(r.Context(), request.IDs, request.Read)
+	var affected int64
+	var err error
+	if len(request.IDs) > 0 {
+		affected, err = s.store.SetItemsRead(r.Context(), request.IDs, request.Read)
+	} else {
+		status := request.Status
+		if status == "" {
+			status = "unread"
+		}
+		affected, err = s.store.SetItemsMatchingRead(r.Context(), ItemQuery{
+			FeedID:   request.FeedID,
+			Category: request.Category,
+			Status:   status,
+			Range:    request.Range,
+			Search:   strings.TrimSpace(request.Search),
+			Timezone: request.Timezone,
+		}, request.Read)
+	}
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
@@ -210,7 +327,7 @@ func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	markdown := BuildMarkdownExport(period, query.Status, baseURL(r), items)
+	markdown := BuildMarkdownExport(period, query.Status, query.Timezone, baseURL(r), items)
 	w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"feedler-%s.md\"", period))
 	_, _ = w.Write([]byte(markdown))
@@ -248,6 +365,7 @@ func itemQueryFromRequest(r *http.Request, defaultLimit int) ItemQuery {
 		Status:   values.Get("status"),
 		Range:    values.Get("range"),
 		Search:   strings.TrimSpace(values.Get("q")),
+		Timezone: values.Get("timezone"),
 		Limit:    limit,
 		Offset:   offset,
 	}

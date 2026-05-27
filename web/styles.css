@@ -148,6 +148,22 @@ button {
   background: #fff;
 }
 
+.button.danger {
+  border-color: rgba(163, 58, 58, 0.35);
+  background: #fff;
+  color: var(--danger);
+}
+
+.button.danger:hover {
+  border-color: var(--danger);
+  background: #fff4f4;
+}
+
+.compact-button {
+  width: 38px;
+  padding-inline: 0;
+}
+
 .import-button input {
   display: none;
 }
@@ -209,6 +225,10 @@ button {
   background: #ffffff;
   color: var(--accent-strong);
   font-weight: 700;
+}
+
+.feed-row.error {
+  color: var(--danger);
 }
 
 .feeds {
@@ -343,6 +363,18 @@ select {
   background: transparent;
 }
 
+.density-compact .item-row {
+  padding-block: 9px;
+}
+
+.density-compact .item-title {
+  font-size: 0.92rem;
+}
+
+.density-compact .item-summary {
+  display: none;
+}
+
 .item-title {
   margin: 0;
   overflow-wrap: anywhere;
@@ -451,6 +483,15 @@ select {
   padding: 18px;
 }
 
+.wide-modal {
+  width: min(1040px, 100%);
+}
+
+.settings-modal,
+.shortcuts-modal {
+  width: min(620px, 100%);
+}
+
 .modal-header {
   display: flex;
   align-items: center;
@@ -474,6 +515,121 @@ select {
   font-size: 1.35rem;
 }
 
+.scope-note {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.feed-add-form {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.5fr) minmax(150px, 1fr) minmax(120px, 0.8fr) auto;
+  gap: 8px;
+}
+
+.feed-add-form input,
+.feed-manage-row input {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-strong);
+  color: var(--ink);
+  padding: 8px 10px;
+}
+
+.feed-manager-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: auto;
+}
+
+.feed-manage-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.feed-manage-main {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(120px, 0.5fr);
+  gap: 8px;
+  min-width: 0;
+}
+
+.feed-url,
+.feed-error {
+  grid-column: 1 / -1;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.feed-error {
+  color: var(--danger);
+}
+
+.feed-manage-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.setting-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, auto);
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.setting-row span {
+  color: var(--ink);
+  line-height: 1.35;
+}
+
+.setting-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  justify-self: end;
+}
+
+.shortcut-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.shortcut-list div {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.shortcut-list dt {
+  display: grid;
+  min-height: 32px;
+  place-items: center;
+  border-radius: 6px;
+  background: #edf1ec;
+  font-weight: 760;
+}
+
+.shortcut-list dd {
+  margin: 0;
+  color: var(--muted);
+}
+
 #exportText {
   min-height: 360px;
   resize: vertical;
@@ -494,13 +650,20 @@ select {
   }
 
   .sidebar {
+    max-height: 46vh;
     min-height: auto;
+    overflow: auto;
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }
 
+  .feeds {
+    max-height: 180px;
+  }
+
   .workspace {
     grid-template-columns: 1fr;
+    min-height: auto;
   }
 
   .list-pane {
@@ -516,13 +679,44 @@ select {
     padding: 14px;
   }
 
+  .sidebar-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .import-button {
+    grid-column: 1 / -1;
+  }
+
   .segmented {
     min-width: 100%;
   }
 
   .button,
   select {
+    width: auto;
+  }
+
+  .toolbar-row > .button,
+  .toolbar-row > select,
+  .modal-actions .button,
+  .feed-add-form .button,
+  .feed-manage-actions .button,
+  .export-controls select,
+  .setting-row select {
     width: 100%;
+  }
+
+  .compact-button {
+    width: auto;
+  }
+
+  .feed-add-form,
+  .feed-manage-row,
+  .feed-manage-main,
+  .setting-row,
+  .shortcut-list {
+    grid-template-columns: 1fr;
   }
 
   .article-header h2 {

@@ -92,6 +92,114 @@ func (s *Store) UpsertFeed(ctx context.Context, feed Feed) error {
 	return err
 }
 
+func (s *Store) CreateFeed(ctx context.Context, feed Feed) (Feed, error) {
+	if strings.TrimSpace(feed.FeedURL) == "" {
+		return Feed{}, fmt.Errorf("feed_url is required")
+	}
+	if feed.Title == "" {
+		feed.Title = feed.FeedURL
+	}
+	if feed.Category == "" {
+		feed.Category = "Uncategorized"
+	}
+
+	now := nowString()
+	_, err := s.db.ExecContext(ctx, `INSERT INTO feeds
+		(title, site_url, feed_url, category, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?)
+		ON CONFLICT(feed_url) DO UPDATE SET
+			title = CASE WHEN excluded.title != '' THEN excluded.title ELSE feeds.title END,
+			category = CASE WHEN excluded.category != '' THEN excluded.category ELSE feeds.category END,
+			updated_at = excluded.updated_at`,
+		strings.TrimSpace(feed.Title),
+		strings.TrimSpace(feed.SiteURL),
+		strings.TrimSpace(feed.FeedURL),
+		strings.TrimSpace(feed.Category),
+		now,
+		now)
+	if err != nil {
+		return Feed{}, err
+	}
+	return s.GetFeedByURL(ctx, feed.FeedURL)
+}
+
+func (s *Store) GetFeed(ctx context.Context, id int64) (Feed, error) {
+	row := s.db.QueryRowContext(ctx, `SELECT
+			f.id,
+			f.title,
+			f.site_url,
+			f.feed_url,
+			f.category,
+			f.last_error,
+			f.last_fetched_at,
+			COUNT(i.id) AS total_count,
+			COALESCE(SUM(CASE WHEN i.read_at = '' THEN 1 ELSE 0 END), 0) AS unread_count
+		FROM feeds f
+		LEFT JOIN items i ON i.feed_id = f.id
+		WHERE f.id = ?
+		GROUP BY f.id`, id)
+	return scanFeed(row)
+}
+
+func (s *Store) GetFeedByURL(ctx context.Context, feedURL string) (Feed, error) {
+	row := s.db.QueryRowContext(ctx, `SELECT
+			f.id,
+			f.title,
+			f.site_url,
+			f.feed_url,
+			f.category,
+			f.last_error,
+			f.last_fetched_at,
+			COUNT(i.id) AS total_count,
+			COALESCE(SUM(CASE WHEN i.read_at = '' THEN 1 ELSE 0 END), 0) AS unread_count
+		FROM feeds f
+		LEFT JOIN items i ON i.feed_id = f.id
+		WHERE f.feed_url = ?
+		GROUP BY f.id`, strings.TrimSpace(feedURL))
+	return scanFeed(row)
+}
+
+func (s *Store) UpdateFeed(ctx context.Context, id int64, title, category string) (Feed, error) {
+	now := nowString()
+	result, err := s.db.ExecContext(ctx, `UPDATE feeds SET
+			title = CASE WHEN ? != '' THEN ? ELSE title END,
+			category = CASE WHEN ? != '' THEN ? ELSE category END,
+			updated_at = ?
+		WHERE id = ?`,
+		strings.TrimSpace(title),
+		strings.TrimSpace(title),
+		strings.TrimSpace(category),
+		strings.TrimSpace(category),
+		now,
+		id)
+	if err != nil {
+		return Feed{}, err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return Feed{}, err
+	}
+	if affected == 0 {
+		return Feed{}, sql.ErrNoRows
+	}
+	return s.GetFeed(ctx, id)
+}
+
+func (s *Store) DeleteFeed(ctx context.Context, id int64) error {
+	result, err := s.db.ExecContext(ctx, `DELETE FROM feeds WHERE id = ?`, id)
+	if err != nil {
+		return err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
 func (s *Store) ListFeeds(ctx context.Context) ([]Feed, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT
 			f.id,
@@ -114,18 +222,8 @@ func (s *Store) ListFeeds(ctx context.Context) ([]Feed, error) {
 
 	var feeds []Feed
 	for rows.Next() {
-		var feed Feed
-		if err := rows.Scan(
-			&feed.ID,
-			&feed.Title,
-			&feed.SiteURL,
-			&feed.FeedURL,
-			&feed.Category,
-			&feed.LastError,
-			&feed.LastFetchedAt,
-			&feed.TotalCount,
-			&feed.UnreadCount,
-		); err != nil {
+		feed, err := scanFeed(rows)
+		if err != nil {
 			return nil, err
 		}
 		feeds = append(feeds, feed)
@@ -310,6 +408,28 @@ func (s *Store) SetItemsRead(ctx context.Context, ids []int64, read bool) (int64
 	return result.RowsAffected()
 }
 
+func (s *Store) SetItemsMatchingRead(ctx context.Context, q ItemQuery, read bool) (int64, error) {
+	where, args := itemWhere(q)
+	readAt := ""
+	if read {
+		readAt = nowString()
+	}
+	args = append([]any{readAt, nowString()}, args...)
+	query := fmt.Sprintf(`UPDATE items SET read_at = ?, updated_at = ?
+		WHERE id IN (
+			SELECT i.id
+			FROM items i
+			JOIN feeds f ON f.id = i.feed_id
+			WHERE %s
+		)`, strings.Join(where, " AND "))
+
+	result, err := s.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 func itemWhere(q ItemQuery) ([]string, []any) {
 	where := []string{"1=1"}
 	args := []any{}
@@ -332,7 +452,7 @@ func itemWhere(q ItemQuery) ([]string, []any) {
 	}
 
 	if q.Range != "" && q.Range != "all" {
-		if start := rangeStart(q.Range); start != "" {
+		if start := rangeStart(q.Range, q.Timezone); start != "" {
 			where = append(where, "i.published_at >= ?")
 			args = append(args, start)
 		}
@@ -349,6 +469,24 @@ func itemWhere(q ItemQuery) ([]string, []any) {
 
 type itemScanner interface {
 	Scan(dest ...any) error
+}
+
+func scanFeed(scanner itemScanner) (Feed, error) {
+	var feed Feed
+	if err := scanner.Scan(
+		&feed.ID,
+		&feed.Title,
+		&feed.SiteURL,
+		&feed.FeedURL,
+		&feed.Category,
+		&feed.LastError,
+		&feed.LastFetchedAt,
+		&feed.TotalCount,
+		&feed.UnreadCount,
+	); err != nil {
+		return Feed{}, err
+	}
+	return feed, nil
 }
 
 func scanItem(scanner itemScanner) (Item, error) {
@@ -373,14 +511,26 @@ func scanItem(scanner itemScanner) (Item, error) {
 	return item, nil
 }
 
-func rangeStart(name string) string {
-	now := time.Now()
+func rangeStart(name string, timezone string) string {
+	loc := time.Local
+	if timezone != "" {
+		if loaded, err := time.LoadLocation(timezone); err == nil {
+			loc = loaded
+		}
+	}
+	now := time.Now().In(loc)
 	switch name {
 	case "today":
-		start := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+		start := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
 		return start.UTC().Format(time.RFC3339)
 	case "week":
-		return now.AddDate(0, 0, -7).UTC().Format(time.RFC3339)
+		weekday := int(now.Weekday())
+		if weekday == 0 {
+			weekday = 7
+		}
+		startDate := now.AddDate(0, 0, -(weekday - 1))
+		start := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, loc)
+		return start.UTC().Format(time.RFC3339)
 	default:
 		return ""
 	}

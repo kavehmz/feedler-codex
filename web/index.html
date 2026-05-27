@@ -19,6 +19,9 @@
 
         <div class="sidebar-actions">
           <button class="button primary" id="refreshButton" type="button">Refresh</button>
+          <button class="button secondary" id="manageFeedsButton" type="button">Manage</button>
+          <button class="button secondary" id="settingsButton" type="button">Settings</button>
+          <button class="button secondary compact-button" id="shortcutsButton" type="button" aria-label="Keyboard shortcuts">?</button>
           <label class="button secondary import-button">
             Import OPML
             <input id="opmlInput" type="file" accept=".opml,.xml" />
@@ -62,7 +65,7 @@
               </select>
             </div>
             <div class="toolbar-row">
-              <button class="button secondary" id="markVisibleReadButton" type="button">Mark visible read</button>
+              <button class="button secondary" id="markSelectionReadButton" type="button">Mark selection read</button>
               <button class="button secondary" id="exportButton" type="button">Export Markdown</button>
             </div>
           </header>
@@ -86,6 +89,7 @@
           <h2 id="exportTitle">Markdown export</h2>
           <button class="icon-button" id="closeExportButton" type="button" aria-label="Close">×</button>
         </header>
+        <div class="scope-note" id="exportScope">Export scope: all feeds</div>
         <div class="export-controls">
           <select id="exportPeriod" aria-label="Export period">
             <option value="today">Today Reads</option>
@@ -103,6 +107,78 @@
           <button class="button secondary" id="copyExportButton" type="button">Copy</button>
           <button class="button primary" id="downloadExportButton" type="button">Download</button>
         </footer>
+      </div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="manageModal" role="dialog" aria-modal="true" aria-labelledby="manageTitle">
+      <div class="modal wide-modal">
+        <header class="modal-header">
+          <h2 id="manageTitle">Feed management</h2>
+          <button class="icon-button" id="closeManageButton" type="button" aria-label="Close">×</button>
+        </header>
+        <form class="feed-add-form" id="addFeedForm">
+          <input id="newFeedURL" type="url" placeholder="Feed URL" required />
+          <input id="newFeedTitle" type="text" placeholder="Title, optional" />
+          <input id="newFeedCategory" type="text" placeholder="Folder" />
+          <button class="button primary" type="submit">Add feed</button>
+        </form>
+        <div class="feed-manager-list" id="feedManagerList"></div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <div class="modal settings-modal">
+        <header class="modal-header">
+          <h2 id="settingsTitle">Settings</h2>
+          <button class="icon-button" id="closeSettingsButton" type="button" aria-label="Close">×</button>
+        </header>
+        <label class="setting-row">
+          <span>Mark unread list items read after they scroll above the list</span>
+          <input id="scrollReadSetting" type="checkbox" />
+        </label>
+        <label class="setting-row">
+          <span>List density</span>
+          <select id="densitySetting">
+            <option value="comfortable">Comfortable</option>
+            <option value="compact">Compact</option>
+          </select>
+        </label>
+        <label class="setting-row">
+          <span>Default filter</span>
+          <select id="defaultStatusSetting">
+            <option value="unread">Unread</option>
+            <option value="all">All</option>
+            <option value="read">Read</option>
+          </select>
+        </label>
+        <label class="setting-row">
+          <span>Default date range</span>
+          <select id="defaultRangeSetting">
+            <option value="all">All time</option>
+            <option value="today">Today</option>
+            <option value="week">This week</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="shortcutsModal" role="dialog" aria-modal="true" aria-labelledby="shortcutsTitle">
+      <div class="modal shortcuts-modal">
+        <header class="modal-header">
+          <h2 id="shortcutsTitle">Keyboard shortcuts</h2>
+          <button class="icon-button" id="closeShortcutsButton" type="button" aria-label="Close">×</button>
+        </header>
+        <dl class="shortcut-list">
+          <div><dt>?</dt><dd>Show shortcuts</dd></div>
+          <div><dt>j</dt><dd>Next story</dd></div>
+          <div><dt>k</dt><dd>Previous story</dd></div>
+          <div><dt>r</dt><dd>Refresh all feeds</dd></div>
+          <div><dt>e</dt><dd>Export current folder or feed</dd></div>
+          <div><dt>a</dt><dd>Mark current folder or feed read</dd></div>
+          <div><dt>m</dt><dd>Toggle selected story read state</dd></div>
+          <div><dt>/</dt><dd>Focus search</dd></div>
+          <div><dt>Esc</dt><dd>Close dialog or clear search focus</dd></div>
+        </dl>
       </div>
     </div>
 
