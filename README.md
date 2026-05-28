@@ -1,10 +1,6 @@
 # Feedler
 
-A local, Dockerized feed reader that imports OPML from Reeder, serves the frontend and backend from one Go process, stores state in SQLite, and exports feed digests as Markdown for AI review.
-
-## Preview
-
-![Feedler running locally](docs/feedler-running.jpg)
+Feedler is a single-port web feed reader built from the local `Feeds.opml` export.
 
 ## Run
 
@@ -12,20 +8,52 @@ A local, Dockerized feed reader that imports OPML from Reeder, serves the fronte
 docker compose up --build
 ```
 
-Then open <http://localhost:8080>.
+Open `http://localhost:8080`.
 
-The first startup imports `Feeds.opml`, stores data in the `feedler-data` Docker volume, and starts a feed refresh in the background.
+The first run imports `Feeds.opml` into SQLite and starts a background refresh. Data is stored in the Docker volume `feedler-data`.
+
+## Screenshots
+
+These are full-resolution PNG screenshots captured from the running Docker app.
+
+### Reader overview
+
+The main layout keeps folders and feeds on the left, the selected article list in the middle, and the reading pane on the right.
+
+![Reader overview](docs/screenshots/reader-overview.png)
+
+### Add and organize feeds
+
+Feeds can be added by URL, assigned to an existing folder, or placed into a new folder directly from the UI.
+
+![Add feed modal](docs/screenshots/add-feed.png)
+
+### Reader settings
+
+Settings include optional mark-as-read-on-scroll behavior, list density, default filter, and timezone.
+
+![Settings modal](docs/screenshots/settings.png)
+
+### Markdown export
+
+Exports are scoped to the current selection and can produce today or this-week Markdown using the configured timezone.
+
+![Markdown export modal](docs/screenshots/export-markdown.png)
+
+### Keyboard shortcuts
+
+Press `?` in the app to open the shortcut reference.
+
+![Keyboard shortcuts modal](docs/screenshots/keyboard-shortcuts.png)
 
 ## Features
 
-- Reeder-style OPML import from `Feeds.opml`, plus OPML upload in the UI.
-- Single service and single exposed port.
-- SQLite persistence for feeds, items, and read/unread state.
-- Manual refresh, startup refresh, and scheduled refresh every 30 minutes.
-- Category and feed navigation, search, date filters, read tracking, and mark-visible-read.
-- Feed management from the UI: add feeds by URL, rename feeds, move feeds between folders, delete feeds, and retry one errored feed.
-- Optional Reeder-style mark-read-on-scroll for unread list items that move above the list viewport.
-- Settings for scroll-read behavior, list density, and default filter/range.
-- Keyboard shortcuts with `?` help.
-- Scoped mark-all-read for the current all-feeds, folder, or feed selection.
-- Scoped Markdown exports for Today Reads, This Week Reads, and Unread Reads with original links and Feedler item links. Today and week filters use the browser timezone passed by the UI.
+- Web UI served by the Go backend on one port.
+- SQLite persistence for folders, feeds, articles, read state, and settings.
+- OPML import from Reeder-style exports.
+- Add, rename, move, delete, refresh, and retry feeds from the UI.
+- Visible per-feed fetch errors.
+- Optional mark-as-read-on-scroll behavior.
+- Scoped mark-all-read for all articles, a folder, or a feed.
+- Markdown export for today or this week, scoped to the current selection and using the browser timezone by default.
+- Keyboard shortcuts; press `?` in the app.
